@@ -7,15 +7,13 @@ module Barby
 
     register :to_pdf, :annotate_pdf
 
-    attr_accessor :xdim, :ydim, :x, :y, :height, :margin, :unbleed
-
+    attr_accessor :xdim, :ydim, :x, :y, :width, :height, :margin, :unbleed, :rotate
 
     def to_pdf(opts={})
       doc_opts = opts.delete(:document) || {}
       doc_opts[:page_size] ||= 'A4'
       annotate_pdf(Prawn::Document.new(doc_opts), opts).render
     end
-
 
     def annotate_pdf(pdf, opts={})
       with_options opts do
@@ -39,16 +37,30 @@ module Barby
             ypos += ydim
           end
         else
-          boolean_groups.each do |bar,amount|
-            if bar
-              pdf.move_to(xpos+unbleed, ypos)
-              pdf.line_to(xpos+unbleed, ypos+height)
-              pdf.line_to(xpos+(xdim*amount)-unbleed, ypos+height)
-              pdf.line_to(xpos+(xdim*amount)-unbleed, ypos)
-              pdf.line_to(xpos+unbleed, ypos)
-              pdf.fill
+          if rotate
+            boolean_groups.reverse.each do |bar,amount|
+              if bar
+                pdf.move_to(xpos, ypos+unbleed)
+                pdf.line_to(xpos+width, ypos+unbleed)
+                pdf.line_to(xpos+width, ypos+(xdim*amount)-unbleed)
+                pdf.line_to(xpos, ypos+(xdim*amount)-unbleed)
+                pdf.line_to(xpos, ypos+unbleed)
+                pdf.fill
+              end
+              ypos += (ydim*amount)
             end
-            xpos += (xdim*amount)
+          else
+            boolean_groups.each do |bar,amount|
+              if bar
+                pdf.move_to(xpos+unbleed, ypos)
+                pdf.line_to(xpos+unbleed, ypos+height)
+                pdf.line_to(xpos+(xdim*amount)-unbleed, ypos+height)
+                pdf.line_to(xpos+(xdim*amount)-unbleed, ypos)
+                pdf.line_to(xpos+unbleed, ypos)
+                pdf.fill
+              end
+              xpos += (xdim*amount)
+            end
           end
         end
 
@@ -63,7 +75,7 @@ module Barby
     end
 
     def width
-      length * xdim
+      two_dimensional? ? (xdim * encoding.length) : (@width || 50)
     end
 
     def height
@@ -114,7 +126,6 @@ module Barby
     def page_size(xdim, height, margin)
       [width(xdim,margin), height(height,margin)]
     end
-
 
   end
 
